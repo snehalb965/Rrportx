@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Report Review Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fff9db; /* light yellow */
+      margin: 0;
+      color: #000; /* black text */
+    }
+
+    header {
+      background: #f59e0b; /* amber */
+      color: #000; /* black text */
+      padding: 16px 32px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 20px;
+    }
+
+    .upload-box {
+      background: white;
+      border: 2px dashed #fde68a; /* pale yellow dashed */
+      padding: 40px;
+      text-align: center;
+      border-radius: 12px;
+    }
+
+    .upload-box input {
+      display: none;
+    }
+
+    .upload-box label {
+      background: #f59e0b; /* amber */
+      color: #000; /* black text */
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .format-select {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Creative dropdown */
+    .format-dropdown { position: relative; display: inline-block; }
+    .format-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #fff6cc;
+      border: 1px solid #fbbf24; /* golden border */
+      cursor: pointer;
+      font-weight:700;
+      color:#000;
+    }
+    .format-button .chev { margin-left:6px; opacity:0.8 }
+
+    .format-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 320px;
+      background: #fffbe6;
+      border: 1px solid #fbbf24; /* golden border */
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      z-index: 40;
+      display: none;
+    }
+
+    .format-panel.open { display: block; }
+
+    .format-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .12s ease;
+      color: #0b0b0b;
+      border: 1px solid transparent;
+    }
+    .format-option + .format-option { margin-top: 8px; }
+    .format-option:hover { background: #fff3a6; border-color: #fbbf24; }
+
+    .opt-text { display:flex; flex-direction:column }
+    .opt-title { font-weight:700 }
+    .opt-desc { font-size:12px; color:#000 }
+
+    .format-option .tick { margin-left:auto; color:#000; font-weight:800; display:none }
+    .format-option.active .tick { display:inline-block }
+
+    /* Responsive: stack panel when narrow */
+    @media (max-width:480px){ .format-panel { width: 100vw; left: -10px; right: -10px; } }
+
+    button {
+      margin-top: 20px;
+      background: #f59e0b; /* amber */
+      color: #000; /* black text */
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .dashboard {
+      display: none;
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 20px;
+    }
+
+    .sidebar {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .sidebar h3 {
+      margin-top: 0;
+    }
+
+    .section {
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+
+    .section.active {
+      background: #fff4cc; /* pale yellow */
+      font-weight: 600;
+    }
+
+    .content {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .score {
+      font-size: 32px;
+      font-weight: bold;
+      color: #000; /* black score */
+    }
+
+    .feedback {
+      margin-top: 20px;
+    }
+
+    .feedback ul {
+      padding-left: 18px;
+    }
+
+    .recommendation {
+      background: #fef3c7;
+      padding: 14px;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+
+    .guidance {
+      background: #fffbe6; /* pale yellow */
+      padding: 14px;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 13px;
+      color: #000;
+      margin: 40px 0 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>AI Report Review Assistant</h1>
+</header>
+
+<div class="container">
+
+  <!-- Upload Section -->
+  <div class="upload-box" id="uploadBox">
+    <p><strong>Upload your report</strong> (PDF or DOCX)</p>
+    <input type="file" id="fileInput" />
+    <label for="fileInput">Choose File</label>
+    <div class="format-select">
+      <select id="format">
+        <option>College Project</option>
+        <option>IEEE Paper</option>
+        <option>Internship Report</option>
+      </select>
+    </div>
+    <div>
+      <!-- text area for future use -->
+       <textarea id="reportText" rows="4" cols="50" placeholder="Or paste report text here..."></textarea>
+    </div>
+
+    <br />
+    <button onclick="analyzeReport()">Analyze Report</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+
+    <!-- Sidebar -->
+    <div class="sidebar" id = "sidebar"></div>
+
+    <!-- Content -->
+    <div class="content" id="content"></div>
+
+  </div>
+</div>
+
+<footer>
+  AI provides guidance only. No report content is generated or rewritten.
+</footer>
+
+<script>
+  
+  const sectionsData = [
+    { name: "Abstract", warn: true },
+    { name: "Introduction", warn: false },
+    { name: "Methodology", warn: true },
+    { name: "Results", warn: false },
+    { name: "Conclusion", warn: true },
+    { name: "References", warn: false }
+  ];
+
+  // Shared analysis state so sections can render results
+  let analysisResult = {
+    overallScore: null,
+    breakdown: null,
+    issues: [],
+    recommendation: null,
+    guidance: []
+  };
+
+  async function analyzeReport() {
+    const fileInput = document.getElementById("fileInput");
+    // Hide upload box and show dashboard
+    document.getElementById("uploadBox").style.display = "none";
+    const dashboard = document.getElementById("dashboard");
+    dashboard.style.display = "grid";
+
+    // Generate sidebar sections dynamically
+    const sidebar = document.getElementById("sidebar");
+    sidebar.innerHTML = "<h3>Sections</h3>";
+    sectionsData.forEach((section, index) => {
+      const sectionDiv = document.createElement("div");
+      sectionDiv.className = "section" + (index === 0 ? " active" : "");
+      sectionDiv.innerHTML = `${section.name} ${section.warn ? '<span class="warn">⚠</span>' : '✓'}`;
+      // Always pass the section element itself (avoids clicks on child elements causing target to be a span)
+      sectionDiv.addEventListener("click", () => showSection(section.name, sectionDiv));
+      sidebar.appendChild(sectionDiv);
+    });
+
+    // Show analyzing state
+    document.getElementById("content").innerHTML = "<p>Analyzing report with AI… ⏳</p>";
+
+    try {
+      // In the real app you'd call the backend; here we simulate or use the backend later
+      const aiResult = await simulateAIAnalysis();
+      // Normalize to our shared state
+      analysisResult.overallScore = aiResult.overallScore ?? null;
+      analysisResult.breakdown = aiResult.breakdown ?? null;
+      analysisResult.issues = aiResult.issues ?? [];
+      analysisResult.recommendation = aiResult.recommendation ?? null;
+      analysisResult.guidance = aiResult.guidance ?? [];
+
+      // Show default content for first section (use the actual element)
+      const firstSectionEl = sidebar.querySelector('.section');
+      if (firstSectionEl) showSection(sectionsData[0].name, firstSectionEl);
+    } catch (err) {
+      console.error(err);
+      document.getElementById("content").innerHTML = '<p style="color:red">Analysis failed. Please try again later.</p>';
+    }
+  }
+
+  
+  function simulateAIAnalysis() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          overallScore: 85, // AI calculated score
+          breakdown: { clarity: 80, rigor: 90, reproducibility: 70, presentation: 90 },
+          issues: [
+            { sentence: "Abstract lacks quantitative results", category: "abstract", message: "Add key numbers from the results." },
+            { sentence: "Methodology does not specify dataset size", category: "methodology", message: "Include dataset size and sampling details." }
+          ],
+          recommendation: "Add more quantitative results and clarify the methodology.",
+          guidance: ["What key concept is explained here?", "Can you support this with data or references?"]
+        });
+      }, 1200); // simulate AI delay
+    });
+  }
+  async function showSection(sectionName, sectionElement) {
+  // Sidebar active state
+  document.querySelectorAll(".section")
+    .forEach(s => s.classList.remove("active"));
+  sectionElement.classList.add("active");
+
+  // ✅ define contentDiv ONCE
+  const contentDiv = document.getElementById("content");
+  contentDiv.innerHTML = `<p>Analyzing ${sectionName}… ⏳</p>`;
+
+  try {
+    // Get text from textarea (prototype mode) or file
+    const textAreaValue = document.getElementById("reportText").value.trim();
+    let text = "";
+
+    if (textAreaValue) {
+      text = textAreaValue;
+    } else {
+      const file = document.getElementById("fileInput").files[0];
+      text = await file.text();
+    }
+
+    // Call Node.js backend
+    const response = await fetch("http://localhost:3000/analyzeReport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+
+    const result = await response.json();
+
+    // Render result
+    contentDiv.innerHTML = `
+      <div class="score">Overall Score: ${result.overall_score}%</div>
+
+      <div class="feedback">
+        <h3>Issues Identified</h3>
+        <ul>
+          ${(result.issues || []).map(issue =>
+            `<li>
+              ${issue.sentence || "N/A"}
+             (${issue.type || "Issue"}, ${issue.category || "General"}) –
+             ${issue.message || ""}
+              </li>`
+          ).join("")}
+        </ul>
+      </div>
+
+      <div class="recommendation">
+        <strong>Recommendation</strong>
+        <p>${result.recommendation}</p>
+      </div>
+
+      <div class="guidance">
+        <strong>Guidance Questions</strong>
+        <ul>
+          ${(result.guidance || []).map(q => `<li>${q}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  } catch (err) {
+    console.error(err);
+    contentDiv.innerHTML =
+      `<p style="color:red">Error analyzing section: ${err.message}</p>`;
+  }
+}
+</script>
+
+</body>
+</html>
